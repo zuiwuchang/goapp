@@ -1,52 +1,66 @@
 # GoApp
 
-English Version | [中文說明](./zh.md)
+[中文說明](./zh.md) | **English Version**
 
+`GoApp` is a powerful wrapper for [Yaegi](https://github.com/traefik/yaegi), a Go engine that enables you to interpret and execute Go code as scripts. It addresses common limitations in the standard Yaegi, such as local project imports and the effort required to extend third-party library support.
 
-`GoApp` is a powerful wrapper for [Yaegi](https://github.com/traefik/yaegi), a Go engine that enables you to interpret and execute Go code as scripts. Compared to the standard Yaegi, `GoApp` comes with more built-in third-party libraries and provides a streamlined workflow for adding your own dependencies.
+### Key Features
 
-## Features
-
-  * **Expanded Standard Library**: Includes a wider range of pre-compiled third-party symbols.
-  * **Easy Extension**: Simplifies the process of embedding extra Go libraries into the interpreter.
-  * **Smart Module Loading**: Features a custom `GOPATH` hook that allows you to import local projects effortlessly.
+  * **Expanded Built-in Libraries**: Pre-packaged with a wider range of popular third-party libraries. See [third-party.md](https://www.google.com/search?q=./third-party.md) for the full list.
+  * **Easy Extension**: Effortlessly embed additional Go symbols and packages into the interpreter through simple configuration.
+  * **Smart Path Hijacking**: Features a custom `GOPATH` hook mechanism that allows you to `import` local projects without complex environment setup.
 
 -----
 
 ## Usage
 
-### Command Syntax
+### Basic Command
 
 ```bash
-$ goapp run [flags] [Project_Dir | GO_FILE] -- [options]
+# Execute a Go package or script file
+$ goapp run [flags] [Project_Dir | GO_FILE] -- [args]
 ```
-
-*Use `--` to separate `goapp` flags from the arguments passed to your script.*
 
 ### Flags
 
-  * `-E, --env strings`: Set environment variables in "key=values" format.
-  * `-P, --gopath string`: Set a custom `GOPATH` for the script execution.
-  * `-S, --sandboxed`: Run with sandboxed standard library symbols (e.g., restricted `os/exec`).
-  * `-T, --tags strings`: Define build constraints for the scripts.
+| Flag | Description |
+| :--- | :--- |
+| `-E, --env` | Set environment variables in "key=values" format |
+| `-P, --gopath` | Set a custom GOPATH for the script execution |
+| `-S, --sandboxed` | Enable sandbox mode (restricts sensitive stdlib symbols like `os/exec`) |
+| `-T, --tags` | Set build constraints (build tags) for the scripts |
 
-### Script Loading Mechanism
+> **Tip**: Use the `--` separator to distinguish between `goapp` flags and the arguments you wish to pass to your script.
 
-GoApp utilizes a **GOPATH Hook Hijacking** strategy to handle local imports:
+-----
 
-  - When you pass a `Project_Dir` or `GO_FILE`, GoApp automatically calculates the base directory and maps it to a virtual `GOPATH/src`.
-  - **The Magic**: It injects a `MAGICDIR` into the runtime. For example, running `goapp run example/myapp` triggers a hook that redirects imports from `MAGICDIR/src/myapp` to the actual physical path of `example/myapp`.
-  - This allows scripts to `import` their own project folders directly without needing to be located inside a real `GOPATH` directory.
+## Script Loading & IDE Support
+
+### 1\. Magic Import (Hook Hijacking)
+
+GoApp simplifies the import logic for local development:
+
+  * When you run `goapp run example/myapp`, the program automatically maps the parent directory to a virtual `GOPATH/src`.
+  * **How it works**: It uses a runtime hook to inject a `MAGICDIR`. When the script attempts to load `MAGICDIR/src/myapp`, GoApp transparently redirects it to the actual physical path of `example/myapp`.
+  * **The Benefit**: You can use the "Project Folder Name" as the package name for imports directly, eliminating the need to move code into a standard Go workspace.
+
+### 2\. VSCode IntelliSense Trick
+
+To get a full-featured IDE experience with code completion and navigation:
+
+1.  Copy the `go.mod` and `go.sum` files from this repository into your **script project directory**.
+2.  **Crucial Step**: Edit the copied `go.mod` and change the `module` name to match your **script folder name**.
+3.  Ensure you have the VSCode Go extension and Go environment installed. The IDE will now recognize all built-in third-party libraries and provide full IntelliSense.
 
 -----
 
 ## Installation & Custom Build
 
-Pre-compiled binaries are available for quick use, but they only include a subset of supported libraries. For full compatibility with your specific stack, building from source is recommended.
+While pre-compiled binaries are available, they only include a subset of supported libraries. For full library support, we recommend building from source.
 
 ### 1\. Prerequisites
 
-Install the Yaegi symbol extraction tool:
+Install the latest Yaegi symbol extraction tool:
 
 ```bash
 go install github.com/traefik/yaegi/cmd/yaegi@latest
@@ -61,7 +75,7 @@ cd goapp
 
 ### 3\. Configure Dependencies
 
-Edit `script/conf.sh` and add the import paths of the third-party libraries you need into the `GOLIB` array:
+Edit the `script/conf.sh` file and add your required library paths to the `GOLIB` array:
 
 ```bash
 GOLIB=(
@@ -74,12 +88,18 @@ GOLIB=(
 
 ### 4\. Generate Symbols and Build
 
-Run the build scripts to generate the necessary glue code and compile the binary:
+Run the build scripts to automate symbol generation, code embedding, and compilation:
 
 ```bash
-# Generate symbol information and embedded code
+# Generate symbol information and glue code
 ./build.sh symbols -g
 
-# Compile the GoApp binary
+# Perform final compilation
 ./build.sh go
 ```
+
+-----
+
+## License
+
+[MIT License]
