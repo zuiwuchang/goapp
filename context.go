@@ -19,7 +19,8 @@ import (
 )
 
 type Context struct {
-	path, gopath string
+	path string
+	dirs []string
 	// Open magic dir
 	magicDir string
 
@@ -37,15 +38,13 @@ func newContext(path, gopath string) (*Context, error) {
 	if e != nil {
 		return nil, e
 	}
-	flag := `:`
-	if runtime.GOOS == `windows` {
-		flag = `;`
-	}
-	var strs []string
-	if gopath == `` {
-		strs = make([]string, 1)
-	} else {
-		strs = strings.Split(flag+gopath, flag)
+	var dirs []string
+	if gopath != `` {
+		if runtime.GOOS == `windows` {
+			dirs = strings.Split(gopath, `;`)
+		} else {
+			dirs = strings.Split(gopath, `:`)
+		}
 	}
 
 	abs, e := filepath.Abs(path)
@@ -58,31 +57,20 @@ func newContext(path, gopath string) (*Context, error) {
 		scriptDir = abs
 
 		dir = filepath.Join(abs, `..`)
+
+		path, e = filepath.Rel(dir, abs)
+		if e != nil {
+			return nil, e
+		}
 	} else {
 		scriptDir = filepath.Dir(abs)
 		dir = filepath.Join(abs, `..`, `..`)
+		path = abs
 	}
 
-	// magic dir append to GOPATH
-	strs[0] = magicDir
-
-	cwd, e := os.Getwd()
-	if e != nil {
-		return nil, e
-	}
-
-	path, e = filepath.Rel(cwd, abs)
-	if e != nil {
-		return nil, e
-	}
-	if runtime.GOOS == `windows` {
-		path = `.\` + path
-	} else {
-		path = `./` + path
-	}
 	return &Context{
 		path:      path,
-		gopath:    strings.Join(strs, flag),
+		dirs:      dirs,
 		magicDir:  dir,
 		scriptDir: scriptDir,
 	}, nil
@@ -91,7 +79,27 @@ func newContext(path, gopath string) (*Context, error) {
 // magic fs.Open
 func (c *Context) Open(name string) (fs.File, error) {
 	if strings.HasPrefix(name, magicDirSrc) {
-		name = filepath.Join(c.magicDir, name[len(magicDirSrc):])
+		name := name[len(magicDirSrc):]
+		f, e := os.Open(filepath.Join(c.magicDir, name))
+		if e == nil {
+			return f, nil
+		}
+		if e != os.ErrNotExist {
+			return nil, e
+		}
+		for _, dir := range c.dirs {
+			if dir == `` {
+				continue
+			}
+			f, e := os.Open(filepath.Join(dir, name))
+			if e == nil {
+				return f, nil
+			}
+			if e != os.ErrNotExist {
+				return nil, e
+			}
+		}
+		return nil, os.ErrNotExist
 	}
 	return os.Open(name)
 }
@@ -107,7 +115,7 @@ type CreateOptions struct {
 func (c *Context) Create(opts CreateOptions) (*interp.Interpreter, error) {
 	i := interp.New(interp.Options{
 		Args:                 opts.Args,
-		GoPath:               c.gopath,
+		GoPath:               magicDir,
 		SourcecodeFilesystem: c,
 		Env:                  opts.Env,
 		BuildTags:            opts.BuildTags,

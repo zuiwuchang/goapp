@@ -118,22 +118,8 @@ if [[ -f "$name" ]];then
 fi
 source=(
     "$target"
-    example
 )
 other=()
-case "$os" in
-    linux)
-        other=(
-            streamf.service
-        )
-    ;;
-    windows)
-        other=(
-            streamf-service.xml
-            streamf-service.exe
-        )
-    ;;
-esac
 
 exec="${args[@]} ${source[@]} ${other[@]}"
 echo $exec

@@ -33,3 +33,9 @@ go.work.sum
 
 bin/goapp
 bin/goappd
+*.sha256.txt
+*.7z
+*.gz
+*.bz2
+*.xz
+*.zip
