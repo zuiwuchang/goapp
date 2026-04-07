@@ -20,9 +20,12 @@ func main() {
 			fmt.Println(`app version:`, gosdk.AppVersion)
 			fmt.Println(`app date:`, gosdk.AppDate)
 			fmt.Println(`app commit:`, gosdk.AppCommit)
-			fmt.Println(`env`, os.Environ())
+			fmt.Println(`env:`, os.Environ())
+			fmt.Println(`os.Args`, os.Args)
 		},
 	}
 	root.AddCommand(cmd.CreateCUI())
+
+	root.SetArgs(os.Args[1:])
 	root.Execute()
 }

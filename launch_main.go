@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
 	"runtime"
 	"runtime/debug"
@@ -11,11 +10,7 @@ import (
 
 	_version "github.com/zuiwuchang/goapp/version"
 
-	"github.com/zuiwuchang/goapp/symbols"
-
 	"github.com/spf13/cobra"
-	"github.com/traefik/yaegi/interp"
-	"github.com/traefik/yaegi/stdlib"
 )
 
 const App = `goapp`
@@ -93,10 +88,10 @@ Usage: ` + App + " run [SCRIPT_DIR] [ARGUMENTS...]")
 }
 func createRun() *cobra.Command {
 	var (
-		gopath       = os.Getenv(`GOPATH`)
-		tags         []string
-		env          []string
-		unrestricted bool
+		gopath    = os.Getenv(`GOPATH`)
+		tags      []string
+		env       []string
+		sandboxed bool
 	)
 
 	var cmd = &cobra.Command{
@@ -108,37 +103,15 @@ func createRun() *cobra.Command {
 			if e != nil {
 				panic(e)
 			}
-			i := interp.New(interp.Options{
-				GoPath:               ctx.gopath,
-				Env:                  env,
-				SourcecodeFilesystem: ctx,
-				BuildTags:            tags,
-				Unrestricted:         unrestricted,
+			i, e := ctx.Create(CreateOptions{
+				Args:      args,
+				BuildTags: tags,
+				Env:       env,
+				Sandboxed: sandboxed,
 			})
-			i.Use(stdlib.Symbols)
-			keys := symbols.Symbols[`github.com/zuiwuchang/gosdk/gosdk`]
-			var (
-				dir   = ctx.scriptDir
-				yaegi = `unknow`
-			)
-			keys["AppCommit"] = reflect.ValueOf(&_version.Commit).Elem()
-			keys["AppDate"] = reflect.ValueOf(&_version.Date).Elem()
-			keys["AppVersion"] = reflect.ValueOf(&_version.Version).Elem()
-			osArgs := os.Args
-			os.Args = args
-			keys["Args"] = reflect.ValueOf(&osArgs).Elem()
-			keys["Dir"] = reflect.ValueOf(&dir).Elem()
-
-			buildInfo, ok := debug.ReadBuildInfo()
-			if ok {
-				for _, dep := range buildInfo.Deps {
-					if dep.Path == "github.com/traefik/yaegi" {
-						yaegi = dep.Version
-					}
-				}
+			if e != nil {
+				panic(e)
 			}
-			keys["Yaegi"] = reflect.ValueOf(&yaegi).Elem()
-			i.Use(symbols.Symbols)
 			_, e = i.EvalPath(ctx.path)
 			if e != nil {
 				panic(e)
@@ -148,16 +121,16 @@ func createRun() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&gopath, `gopath`, `P`, gopath, `sets GOPATH for the scripts`)
 	flags.StringSliceVarP(&tags, `tags`, `T`, nil, `sets build constraints for the scripts`)
-	flags.BoolVarP(&unrestricted, `unrestricted`, `U`, false, `allows to run non sandboxed stdlib symbols such as os/exec and environment`)
+	flags.BoolVarP(&sandboxed, `sandboxed`, `S`, false, `run sandboxed stdlib symbols such as os/exec and environment`)
 	flags.StringSliceVarP(&env, `env`, `E`, nil, `environment in the form "key=values"`)
 	return cmd
 }
 func createTest() *cobra.Command {
 	var (
-		gopath       = os.Getenv(`GOPATH`)
-		tags         []string
-		env          []string
-		unrestricted bool
+		gopath    = os.Getenv(`GOPATH`)
+		tags      []string
+		env       []string
+		sandboxed bool
 	)
 
 	var cmd = &cobra.Command{
@@ -169,38 +142,15 @@ func createTest() *cobra.Command {
 			if e != nil {
 				panic(e)
 			}
-			i := interp.New(interp.Options{
-				GoPath:               ctx.gopath,
-				Env:                  env,
-				SourcecodeFilesystem: ctx,
-				BuildTags:            tags,
-				Unrestricted:         unrestricted,
+			i, e := ctx.Create(CreateOptions{
+				BuildTags: tags,
+				Env:       env,
+				Sandboxed: sandboxed,
 			})
-			i.Use(stdlib.Symbols)
-			keys := symbols.Symbols[`github.com/zuiwuchang/gosdk/gosdk`]
-			var (
-				dir   = ctx.scriptDir
-				yaegi = `unknow`
-			)
-			keys["AppCommit"] = reflect.ValueOf(&_version.Commit).Elem()
-			keys["AppDate"] = reflect.ValueOf(&_version.Date).Elem()
-			keys["AppVersion"] = reflect.ValueOf(&_version.Version).Elem()
-			osArgs := os.Args
-			os.Args = args
-			keys["Args"] = reflect.ValueOf(&osArgs).Elem()
-			keys["Dir"] = reflect.ValueOf(&dir).Elem()
-
-			buildInfo, ok := debug.ReadBuildInfo()
-			if ok {
-				for _, dep := range buildInfo.Deps {
-					if dep.Path == "github.com/traefik/yaegi" {
-						yaegi = dep.Version
-					}
-				}
+			if e != nil {
+				panic(e)
 			}
-			keys["Yaegi"] = reflect.ValueOf(&yaegi).Elem()
-			i.Use(symbols.Symbols)
-			e = i.EvalTest(ctx.path)
+			_, e = i.EvalPath(ctx.path)
 			if e != nil {
 				panic(e)
 			}
@@ -228,7 +178,7 @@ func createTest() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&gopath, `gopath`, `P`, gopath, `sets GOPATH for the scripts`)
 	flags.StringSliceVarP(&tags, `tags`, `T`, nil, `sets build constraints for the scripts`)
-	flags.BoolVarP(&unrestricted, `unrestricted`, `U`, false, `allows to run non sandboxed stdlib symbols such as os/exec and environment`)
+	flags.BoolVarP(&sandboxed, `sandboxed`, `S`, false, `run sandboxed stdlib symbols such as os/exec and environment`)
 	flags.StringSliceVarP(&env, `env`, `E`, nil, `environment in the form "key=values"`)
 	return cmd
 }
