@@ -9,7 +9,7 @@ import (
 	"github.com/zuiwuchang/gosdk"
 )
 
-func main() {
+func RunMain() {
 	var root = &cobra.Command{
 		Use:   "myapp",
 		Short: "myapp example",

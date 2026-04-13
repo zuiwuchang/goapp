@@ -19,8 +19,9 @@ import (
 )
 
 type Context struct {
-	path string
-	dirs []string
+	idDir bool
+	path  string
+	dirs  []string
 	// Open magic dir
 	magicDir string
 
@@ -53,7 +54,8 @@ func newContext(path, gopath string) (*Context, error) {
 	}
 	// get magic dir
 	var scriptDir string
-	if stat.IsDir() {
+	idDir := stat.IsDir()
+	if idDir {
 		scriptDir = abs
 
 		dir = filepath.Join(abs, `..`)
@@ -69,6 +71,7 @@ func newContext(path, gopath string) (*Context, error) {
 	}
 
 	return &Context{
+		idDir:     idDir,
 		path:      path,
 		dirs:      dirs,
 		magicDir:  dir,
