@@ -173,7 +173,6 @@ func createRun() *cobra.Command {
 					if strings.HasPrefix(k, `RunMain`) {
 						if f, ok := v.Interface().(func()); ok {
 							f()
-							return
 						}
 					}
 				}
